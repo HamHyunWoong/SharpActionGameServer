@@ -1,0 +1,6 @@
+C:\GitHubProject\SharpGameServer\SharpGameServer\bin\Debug\SharpGameServer.exe.config
+C:\GitHubProject\SharpGameServer\SharpGameServer\bin\Debug\SharpGameServer.exe
+C:\GitHubProject\SharpGameServer\SharpGameServer\bin\Debug\SharpGameServer.pdb
+C:\GitHubProject\SharpGameServer\SharpGameServer\obj\Debug\SharpGameServer.csprojResolveAssemblyReference.cache
+C:\GitHubProject\SharpGameServer\SharpGameServer\obj\Debug\SharpGameServer.exe
+C:\GitHubProject\SharpGameServer\SharpGameServer\obj\Debug\SharpGameServer.pdb
