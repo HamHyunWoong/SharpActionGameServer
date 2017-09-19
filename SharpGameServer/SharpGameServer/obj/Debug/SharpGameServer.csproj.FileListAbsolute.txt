@@ -4,3 +4,9 @@ C:\GitHubProject\SharpGameServer\SharpGameServer\bin\Debug\SharpGameServer.pdb
 C:\GitHubProject\SharpGameServer\SharpGameServer\obj\Debug\SharpGameServer.csprojResolveAssemblyReference.cache
 C:\GitHubProject\SharpGameServer\SharpGameServer\obj\Debug\SharpGameServer.exe
 C:\GitHubProject\SharpGameServer\SharpGameServer\obj\Debug\SharpGameServer.pdb
+C:\GitHubProject\SharpMMO_GameServer\SharpGameServer\SharpGameServer\bin\Debug\SharpGameServer.exe.config
+C:\GitHubProject\SharpMMO_GameServer\SharpGameServer\SharpGameServer\obj\Debug\SharpGameServer.exe
+C:\GitHubProject\SharpMMO_GameServer\SharpGameServer\SharpGameServer\obj\Debug\SharpGameServer.pdb
+C:\GitHubProject\SharpMMO_GameServer\SharpGameServer\SharpGameServer\obj\Debug\SharpGameServer.csprojResolveAssemblyReference.cache
+C:\GitHubProject\SharpMMO_GameServer\SharpGameServer\SharpGameServer\bin\Debug\SharpGameServer.exe
+C:\GitHubProject\SharpMMO_GameServer\SharpGameServer\SharpGameServer\bin\Debug\SharpGameServer.pdb

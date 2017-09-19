@@ -16,9 +16,32 @@ namespace SharpGameServer
 
         public static Socket server;
         private static int port;
+        private static string DB_table;
+        private static string DB_URL;
+        private static string DB_ADMIN_ID;
+        private static string DB_ADMIN_PASS;
+
+
+
         private static IPEndPoint ipEndPoint;
-        private static List<Socket> clientList = new List<Socket>();
+        private static List<Client_Data> clientList = new List<Client_Data>();
+
         static string readMassage;
+
+
+        public struct Client_Data { 
+
+            public Socket socket;
+
+            public string ID_name;
+            public string password;
+
+            public int [] inventory;
+  
+        }
+
+
+
 
         static void Main(string[] args)
         {
@@ -42,62 +65,97 @@ namespace SharpGameServer
 
             port = int.Parse(Console.ReadLine());
             Console.WriteLine("My port is " + port);
-            //Create Socket
+
+            //서버 소켓 생성
             server = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
-            //Init IP and Port
+            //IP , Port 설정
             ipEndPoint = new IPEndPoint(IPAddress.Any, port);
             server.Bind(ipEndPoint);
-            server.Listen(1000); //Limit Client User
+            ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            //데이터베이스 연결설정 URL ,PORT ,ADMIN ID, PASS를 입력받음 
+
+
+
+            Console.Write("Table Name : ");
+            DB_table = Console.ReadLine();
+            Console.WriteLine("************************************************************");
+            Console.Write("Database admin ID : ");
+            DB_ADMIN_ID = Console.ReadLine();
+            Console.WriteLine("************************************************************");
+
+            Console.Write("Database admin Pass : ");
+            DB_ADMIN_PASS = Console.ReadLine();
+            Console.WriteLine("************************************************************");
+
+
+            //데이터베이스 로그인 
+            DB_Connecton database = new DB_Connecton();
+            
+            database.LoginDB(DB_table, DB_ADMIN_ID, DB_ADMIN_PASS);
+         
+
+            //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+            server.Listen(1000); //접속자수 제한, 서버오픈
+
+            Console.WriteLine("접속자 대기중...");
 
 
             while (true)
             {
-                Console.WriteLine("Client Waiting...");
-                //Client Waiting and Accept Socket
+                //클라이언트를 받아옴
                 Socket client = server.Accept();
 
-                //Client IP Address 
+                //Client IP 주소
                 string address = client.RemoteEndPoint.ToString();
 
                 // addressArray[0] = IP, addressArray[1] = Port
                 string[] addressArray = address.Split(new char[] { ':' });
 
-                //Show Connected Client Address
+                //연결된 Client Address 물리주소를 표시
                 Console.WriteLine("클라이언트 접속 성공! \n 클라이언트 정보 " + address);
 
-                //Create Stream
+                //Stream 생성 
                 NetworkStream networkStream = new NetworkStream(client);
                 StreamReader streamReader = new StreamReader(networkStream);
 
-                //Update ClientList
-                clientList.Add(client);
+                //클라이언트 데이터 구조체를 생성
+                Client_Data c_data = new Client_Data();
+                c_data.socket = client;
+                
 
-                //BroadCast User Connect Message
-                TcpBroadCast("<<[" + address + "] 님이 채팅방에 접속하셨습니다. >>");
+                //클라이언트 데이터 리스트를 업데이트함
+                clientList.Add(c_data);
+
+                //접속자 알림 (전체멀티케스트)
+                TcpMultiCast("<<[" + address + "] 님이 게임에 접속하셨습니다. >>");
 
                 //Create Service Thread
                 Thread serviceThread = new Thread(delegate ()
                 {
                     try
                     {
+                        //게임 서비스 시작 
                         Run(client, networkStream, streamReader);
                     }
                     catch (Exception e)
                     {
                         for (int i = 0; i < clientList.Count; i++)
                         {
-                            Socket sk = clientList.ToArray<Socket>()[i];
-                            if (sk == client)
+                            Client_Data sk = clientList.ToArray<Client_Data>()[i];
+                           
+                            if (sk.socket == client)
                             {
                                 Console.WriteLine("접속해제 클라이언트 정보 : " + address);
 
-                                //Client List
+                                //클라이언트 리스트에서 제거 
                                 clientList.RemoveAt(i);
                                 client.Close();
 
-                                //BroadCast User DisConnect Message
-                                TcpBroadCast("<<[" + address + "] 님이 채팅방에서 나가셨습니다.>>");
+                                //전체멀티케스트 
+                                TcpMultiCast("<<[" + address + "] 님이 채팅방에서 나가셨습니다.>>");
                             }
                         }
                     }
@@ -120,7 +178,7 @@ namespace SharpGameServer
         }
 
 
-        //Service Thread 
+        //서비스 스레드 
         static void Run(Socket client, NetworkStream networkStream, StreamReader streamReader)
         {
             Console.WriteLine("서비스스레드 시작");
@@ -130,10 +188,10 @@ namespace SharpGameServer
                 if (!client.Connected)
                 {
                     int i = 0;
-                    foreach (Socket sk in clientList)
+                    foreach (Client_Data sk in clientList)
                     {
 
-                        if (sk == client)
+                        if (sk.socket == client)
                         {
 
                             clientList.RemoveAt(i);
@@ -158,24 +216,27 @@ namespace SharpGameServer
 
                         string[] msgArr = readMassage.Split(new char[] {','}); //콤마로 구분 
 
-                        // msgArr[0] = ADD 이면 가입 처리 
-                        // msgArr[0] = LOGIN 이면 로그인
-                        // msgArr[0] = LOGOUT 이면 로그아웃
-                        // msgArr[0] = 
+                        // msgArr[0] = "NEWPLAYER" 이면 가입 처리 ->데이터베이스로 저장 
+                        // msgArr[0] = "LOGIN" 이면 로그인 및 플레이어 데이터 송신
+                        // msgArr[0] = "LOGOUT" 이면 로그아웃 및 플레이어 데이터 수신 
+                        // msgArr[0] = "TALK" 이면 채팅모드
+                        // msgArr[0] = "ITEM" 이면 플레이어 소지 아이템정보 수신
+                        // msgArr[0] = "MONSTER" 이면 보스정보
+                        // msgArr[0] = "PLAYER" 이면 플레이어
 
 
 
-                        if () {
 
 
 
-                        }
+
+
 
 
 
 
                         //BroadCast Server to Client
-                        TcpBroadCast(readMassage);
+                        TcpMultiCast(readMassage);
                     }
 
 
@@ -188,18 +249,18 @@ namespace SharpGameServer
 
         }
 
-        static void TcpBroadCast(string message)
+        static void TcpMultiCast(string message)
         {
 
 
-            foreach (Socket sk in clientList)
+            foreach (Client_Data sk in clientList)
             {
-                if (sk != null)
+                if (sk.socket != null)
                 {
                     //Send
                     try
                     {
-                        NetworkStream networkStream = new NetworkStream(sk);
+                        NetworkStream networkStream = new NetworkStream(sk.socket);
                         StreamWriter streamWriter = new StreamWriter(networkStream);
 
                         Console.WriteLine(message);
@@ -212,23 +273,8 @@ namespace SharpGameServer
                     }
                     catch (Exception e)
                     {
-                        int i = 0;
-                        foreach (Socket sk2 in clientList)
-                        {
 
-                            if (sk == sk2)
-                            {
-
-                                clientList.RemoveAt(i);
-                                sk2.Close();
-
-
-                                break;
-
-                            }
-                            i++;
-                        }
-
+                        Console.WriteLine("error : "+e.Message);
 
                     }
 
