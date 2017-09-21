@@ -24,22 +24,35 @@ namespace SharpGameServer
 
 
         private static IPEndPoint ipEndPoint;
-        private static List<Client_Data> clientList = new List<Client_Data>();
+        public static List<Client_Data> clientList = new List<Client_Data>();
+        public static List<Monster_Data> monsterList = new List<Monster_Data>();
 
         static string readMassage;
+
+        public struct Status {
+            public float x; //0
+            public float y; //1
+            public string anime; //2
+
+        }
 
 
         public struct Client_Data { 
 
             public Socket socket;
-
             public string ID_name;
             public string password;
-
-            public int [] inventory;
+            public Status stat;
   
         }
+        public struct Monster_Data
+        {
+            
+            public string ID_name;
+            public int HP;
+            public Status stat;
 
+        }
 
 
 
@@ -75,9 +88,6 @@ namespace SharpGameServer
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
             //데이터베이스 연결설정 URL ,PORT ,ADMIN ID, PASS를 입력받음 
-
-
-
             Console.Write("Table Name : ");
             DB_table = Console.ReadLine();
             Console.WriteLine("************************************************************");
@@ -94,11 +104,29 @@ namespace SharpGameServer
             DB_Connecton database = new DB_Connecton();
             
             database.LoginDB(DB_table, DB_ADMIN_ID, DB_ADMIN_PASS);
-         
+
+            //몬스터리스트 추가 및 데이터베이스에서 몬스터정보 로드 
+            database.getMonsterDB("GAMEMON", DB_ADMIN_ID, DB_ADMIN_PASS);
+
+            //필드 몬스터 생성 및 처리 (접속 클라이언트가 없을경우 전송하지는 않는다. )
+            MonsterService();
+           
+
 
             //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-            server.Listen(1000); //접속자수 제한, 서버오픈
+            
+            //이번프로젝트에서는 접속자 한명당 스레드 하나를 할당하여 실시간 처리를 증가시키기로 하였습니다.
+            //룸 방식(1~16)의 멀티플레이 게임에 적합합니다. 
+            //만일 동접자수는 늘리되 반응성을 유지시키는 방향이라면 각 게임방들을 컨트롤하는 서버와 로그인서버 채팅서버등이 별도로 필요합니다.
+            
+            //동접자수를 늘리되 반응성은 약간 포기하는 방향이라면 유져당 스레드를 할당하지 않고 메세지에 유져의 ID값을 넣고 그 정보를 기반으로 분류해서 서비스.
+            //다만 이렇게 만든다면 클라이언트에서 마우스 클릭 이동방식을 채택해야 합니다.
+            
+            //다만 이번 프로젝트에서는 기획상 키보드 이동방식이기도 하고, 현실적 여건상 로그인서버 채팅서버를 게임서버에 합쳐서 한번에 구현해보기로 하였습니다.
+            //그렇기에 이번 프로젝트에는 로그인기능 채팅기능 게임정보 처리기능 등이 모두 구현되어 있습니다. 
+             
+            server.Listen(8); //동시 접속자수 제한, 서버오픈
+            
 
             Console.WriteLine("접속자 대기중...");
 
@@ -129,16 +157,17 @@ namespace SharpGameServer
                 //클라이언트 데이터 리스트를 업데이트함
                 clientList.Add(c_data);
 
-                //접속자 알림 (전체멀티케스트)
-                TcpMultiCast("<<[" + address + "] 님이 게임에 접속하셨습니다. >>");
+                //접속자 표시
+                Console.WriteLine("새로운 클라이언트 연결됨");
 
-                //Create Service Thread
+
+                //스레드 처리 
                 Thread serviceThread = new Thread(delegate ()
-                {
+                { 
                     try
                     {
                         //게임 서비스 시작 
-                        Run(client, networkStream, streamReader);
+                        Run(c_data, networkStream, streamReader,database);
                     }
                     catch (Exception e)
                     {
@@ -179,23 +208,23 @@ namespace SharpGameServer
 
 
         //서비스 스레드 
-        static void Run(Socket client, NetworkStream networkStream, StreamReader streamReader)
+        static void Run(Client_Data clientData, NetworkStream networkStream, StreamReader streamReader, DB_Connecton database)
         {
             Console.WriteLine("서비스스레드 시작");
             while (true)
             {
-                Thread.Sleep(10);
-                if (!client.Connected)
+                Thread.Sleep(100);
+                if (!clientData.socket.Connected)
                 {
                     int i = 0;
                     foreach (Client_Data sk in clientList)
                     {
 
-                        if (sk.socket == client)
+                        if (sk.socket == clientData.socket)
                         {
 
                             clientList.RemoveAt(i);
-                            client.Close();
+                            clientData.socket.Close();
 
                             break;
 
@@ -207,31 +236,88 @@ namespace SharpGameServer
                 else
                 {
 
-                    Console.WriteLine(".");
-
-                    while ((readMassage = streamReader.ReadLine()) != null)
+                    while ((readMassage = streamReader.ReadLine() ) != null)
                     {
                         //Read Massage from Client
                         Console.WriteLine("수신된 메시지 : " + readMassage);
 
-                        string[] msgArr = readMassage.Split(new char[] {','}); //콤마로 구분 
+                        string[] msgArr = readMassage.Split(new char[] {'$'}); //$로 구분 
 
                         // msgArr[0] = "NEWPLAYER" 이면 가입 처리 ->데이터베이스로 저장 
                         // msgArr[0] = "LOGIN" 이면 로그인 및 플레이어 데이터 송신
                         // msgArr[0] = "LOGOUT" 이면 로그아웃 및 플레이어 데이터 수신 
                         // msgArr[0] = "TALK" 이면 채팅모드
-                        // msgArr[0] = "ITEM" 이면 플레이어 소지 아이템정보 수신
                         // msgArr[0] = "MONSTER" 이면 보스정보
                         // msgArr[0] = "PLAYER" 이면 플레이어
 
+                        switch (msgArr[0]) {
+                            case "NEWPLAYER":
+                                Console.WriteLine("플레이어 가입시도");
+                                string msg =database.AddplayerDB("playerTable",DB_ADMIN_ID,DB_ADMIN_PASS,msgArr[1]);
+                                //응답 메시지 전송
+                                SendMessage(clientData.socket, msg);
+                                
+                                break;
+
+                            case "LOGIN":
+                                Console.WriteLine("플레이어 로그인 시도");
+                                string msg2 = database.login_playerDB("playerTable", DB_ADMIN_ID, DB_ADMIN_PASS, msgArr[1]);
+                                //응답 메시지 전송
+                                SendMessage(clientData.socket, msg2);
+                                break;
+
+                            case "LOGOUT":
+                                Console.WriteLine("플레이어 로그아웃 요청");
+                                string msg3 = database.logout_playerDB("playerTable", DB_ADMIN_ID, DB_ADMIN_PASS, msgArr[1]);
+                                break;
+
+                            case "TALK":
+                                Console.WriteLine("채팅요청");
+                                TcpMultiCast(readMassage);
+                                break;
 
 
+                            case "MONSTER":
+                                Console.WriteLine("몬스터 스테이터스 수신"); //이름,HP만 
+                                for(int i =0; i< monsterList.Count;i++)
+                                {
+                                    Monster_Data mon = monsterList.ToArray<Monster_Data>()[i];
+
+                                    //이름이 같을경우
+                                    if (mon.ID_name == msgArr[1]) {
+                                        mon.HP = int.Parse(msgArr[2]);
+                                        //해당 데이터를 삭제
+                                        monsterList.RemoveAt(i);
+                                        //새 데이터로 추가
+                                        monsterList.Insert(i,mon);
+
+                                    }
+                                    
 
 
+                                }
+                                break;
+
+                            case "PLAYER":
+                                Console.WriteLine("플레이어 스테이터스 수신");
+
+                                // #을 기준으로 한번 더 자름 
+                                // 0 = x , 1 = y , 2 =anime , 3 =name_id -> 다만 id는 이미 플레이어 로그인 시점에서 다뤘기에 구조체에는 포함하지 않고 메세지에만...
+                                string[] statArr = msgArr[1].Split(new char[] { '#' });
+
+                                //좌표를 일시적으로 저장한 이유는 몬스터의 네비게이션 알고리즘에 활용하기 위해 -> 리얼타임 처리 
+                                clientData.stat.x = float.Parse(statArr[0]);
+                                clientData.stat.y = float.Parse(statArr[1]);
+                                clientData.stat.anime = statArr[2];
+
+                                //전 클라이언트에 해당 플레이어의 위치를 알림 
+                                TcpMultiCast(readMassage);
 
 
+                                break;
 
 
+                        }
 
 
 
@@ -249,6 +335,70 @@ namespace SharpGameServer
 
         }
 
+        void MonsterService() {
+
+            Thread serviceThread = new Thread(delegate ()
+            {
+                while (true)
+                {
+
+                    string mon_msg = "MONSTER$";
+                    for (int i = 0; i < monsterList.Count; i++)
+                    {
+
+                        Monster_Data monster = monsterList.ToArray<Monster_Data>()[i];
+
+                        //monster 위치를 갱신 
+                        MonNavi.Start(monster);
+
+                        Thread.Sleep(1);
+                        //0 = name , 1 = x , 2 =y , 3 = anime , 4 =HP -> #으로 구분
+                        mon_msg = mon_msg + "#" + monster.ID_name + "#" + monster.stat.x + "#" + monster.stat.y + "#" + monster.stat.anime + "#" + monster.HP;
+
+                        //현재 몬스터 필드테이블을 접속한 모든 플레이어에게 전송
+                        TcpMultiCast(mon_msg);
+                    }
+
+
+                    //0.1초마다 슬립 시킴 
+                    Thread.Sleep(100);
+                }
+            });
+            //Start Thread
+            serviceThread.Start();
+
+        }
+
+
+        static void SendMessage(Socket sk,string message) {
+            try
+            {
+                 NetworkStream networkStream = new NetworkStream(sk);
+                 StreamWriter streamWriter = new StreamWriter(networkStream);
+
+                 Console.WriteLine(message);
+
+                 //비동기 I/O 전송처리(AsyncTask) 
+                 streamWriter.WriteLineAsync(message);
+                 //버퍼를 비동기적으로 지움(AsyncTask)
+                 streamWriter.FlushAsync();
+
+
+                 networkStream = null;
+                 streamWriter = null;
+            }
+            catch (Exception e)
+            {
+
+                Console.WriteLine("error : " + e.Message);
+
+            }
+
+        }
+
+
+        //AsyncTask 이용한 메세지 전송
+        //비동기 전송처리 -> 멀티케스팅 
         static void TcpMultiCast(string message)
         {
 
@@ -264,8 +414,11 @@ namespace SharpGameServer
                         StreamWriter streamWriter = new StreamWriter(networkStream);
 
                         Console.WriteLine(message);
-                        streamWriter.WriteLine(message);
-                        streamWriter.Flush();
+
+                        //비동기 I/O 전송처리(AsyncTask) 
+                        streamWriter.WriteLineAsync(message);
+                        //버퍼를 비동기적으로 지움(AsyncTask)
+                        streamWriter.FlushAsync();
 
 
                         networkStream = null;
