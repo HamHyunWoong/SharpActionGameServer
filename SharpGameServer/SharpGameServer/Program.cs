@@ -326,7 +326,7 @@ namespace SharpGameServer
 
 
                         //BroadCast Server to Client
-                        TcpMultiCast(readMassage);
+                        //TcpMultiCast(readMassage);
                     }
 
 
@@ -374,8 +374,6 @@ namespace SharpGameServer
                  NetworkStream networkStream = new NetworkStream(sk);
                  StreamWriter streamWriter = new StreamWriter(networkStream);
 
-                 Console.WriteLine(message);
-
                  //비동기 I/O 전송처리(AsyncTask) 
                  streamWriter.WriteLineAsync(message);
                  //버퍼를 비동기적으로 지움(AsyncTask)
@@ -408,7 +406,7 @@ namespace SharpGameServer
                     {
                         NetworkStream networkStream = new NetworkStream(sk.socket);
                         StreamWriter streamWriter = new StreamWriter(networkStream);
-                        Console.WriteLine(message);
+                        //Console.WriteLine(message);
 
                         //비동기 I/O 전송처리(AsyncTask) 
                         streamWriter.WriteLineAsync(message);

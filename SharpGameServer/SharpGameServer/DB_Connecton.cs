@@ -40,28 +40,61 @@ namespace SharpGameServer
         //새로 가입하기
         public string AddplayerDB(string playerInfo)
         {
-            string reply = "NEWPLAYER$가입실패";
-            try
-            {
-
+                string reply = "NEWPLAYER$가입실패";
+           
+           
 
                 string[] msgArr = playerInfo.Split(new char[] { '#' });
-
-                // DB 열기
+                string str = "A";
+                try
+                {
                 myConnection.Open();
+                // 가입하려는 아이디 값으로 검색 
+                MySqlCommand cmd = new MySqlCommand("SELECT player_ID FROM playerstat WHERE player_ID='" + msgArr[0] + "'", myConnection);
+                    MySqlDataReader rdr = cmd.ExecuteReader();
 
-                MySqlCommand cmd = new MySqlCommand("INSERT INTO playerstat (player_ID , player_PASS, Player_X , Player_Y , Player_ANI) VALUES ('"+msgArr[0]+"', '"+msgArr[1]+"' , 50 ,50 ,IDLE)", myConnection);
-                cmd.ExecuteNonQuery();
+                    while (rdr.Read())
+                    {
+                        str += rdr[0].ToString();
+                    }
 
-            }
+                    Console.WriteLine("val : "+str);
+
+                myConnection.Close();
+
+                if (str == "A")
+                {
+                    Console.WriteLine("called");
+                    //넣기
+                    myConnection.Open();
+                    MySqlCommand cmd2 = new MySqlCommand("INSERT INTO playerstat (player_ID , player_PASS, Player_X , Player_Y , Player_ANI) VALUES ('" + msgArr[0] + "', '" + msgArr[1] + "' , 50 ,50 ,'IDLE')", myConnection);
+                    cmd2.ExecuteNonQuery();
+
+
+                    reply = "NEWPLAYER$가입성공";
+                    myConnection.Close();
+                    return reply;
+
+                }
+                else {
+
+                    Console.WriteLine("가입실패처리 ");
+                    //발견되었을 경우 가입실패라 알림 
+                    reply = "NEWPLAYER$가입실패";
+                }
+
+                }
+
             catch (Exception e)
             {
-                Console.WriteLine(" DB 가입거부 : " + e.Message);
-                return reply;
+                Console.WriteLine("error : "+e.Message);
+
+                reply = "NEWPLAYER$가입실패";
+                    myConnection.Close();
+                    return reply;
             }
-
+            myConnection.Close();
             return reply;
-
         }
         //로그인하기
         public string login_playerDB(string playerInfo)
@@ -112,13 +145,14 @@ namespace SharpGameServer
                         //로그인 실패
                         return login_reply;
                     }
-  
+                
+
             }
             catch (Exception e)
             {
                 Console.WriteLine(" DB error\n 프로그램을 종료하고 처음부터 다시 설정해 주세요 : " + e.Message);
             }
-
+            myConnection.Close();
             return login_reply;
 
         }
@@ -138,8 +172,7 @@ namespace SharpGameServer
                     //해당 플레이어 ID로부터 튜플을 찾음
                     string statmsg = "LOGOUT$로그아웃성공";
 
-                    // DB 열기
-                    myConnection.Open();
+
                     //데이터베이스에 플레이어 위치 정보 저장
                     MySqlCommand cmd = new MySqlCommand("UPDATE playerstat SET Player_X ="+msgArr[2]+" WHERE player_ID="+msgArr[0], myConnection);
                     cmd.ExecuteNonQuery();
@@ -154,7 +187,7 @@ namespace SharpGameServer
             {
                 return reply;
             }
-
+            myConnection.Close();
         }
         //몬스터 정보 불러오기
         public void getMonsterDB()
@@ -210,7 +243,7 @@ namespace SharpGameServer
             {
                 Console.WriteLine(" DB error : " + e.Message);
             }
-
+            myConnection.Close();
         }
 
     }
