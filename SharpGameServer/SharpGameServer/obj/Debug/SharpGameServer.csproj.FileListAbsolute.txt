@@ -10,3 +10,4 @@ C:\GitHubProject\SharpMMO_GameServer\SharpGameServer\SharpGameServer\obj\Debug\S
 C:\GitHubProject\SharpMMO_GameServer\SharpGameServer\SharpGameServer\obj\Debug\SharpGameServer.csprojResolveAssemblyReference.cache
 C:\GitHubProject\SharpMMO_GameServer\SharpGameServer\SharpGameServer\bin\Debug\SharpGameServer.exe
 C:\GitHubProject\SharpMMO_GameServer\SharpGameServer\SharpGameServer\bin\Debug\SharpGameServer.pdb
+C:\GitHubProject\SharpMMO_GameServer\SharpGameServer\SharpGameServer\bin\Debug\MySql.Data.dll

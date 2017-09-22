@@ -8,6 +8,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Net.NetworkInformation;
 using System.Threading;
+using MySql.Data.MySqlClient;
 
 namespace SharpGameServer
 {
@@ -50,7 +51,9 @@ namespace SharpGameServer
             
             public string ID_name;
             public int HP;
+            public float angle;
             public Status stat;
+
 
         }
 
@@ -87,9 +90,8 @@ namespace SharpGameServer
             server.Bind(ipEndPoint);
             ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-            //데이터베이스 연결설정 URL ,PORT ,ADMIN ID, PASS를 입력받음 
-            Console.Write("Table Name : ");
-            DB_table = Console.ReadLine();
+            //데이터베이스 연결설정 ADMIN ID, PASS를 입력받음 
+            string db = "gamebase";
             Console.WriteLine("************************************************************");
             Console.Write("Database admin ID : ");
             DB_ADMIN_ID = Console.ReadLine();
@@ -101,12 +103,12 @@ namespace SharpGameServer
 
 
             //데이터베이스 로그인 
-            DB_Connecton database = new DB_Connecton();
+            DB_Connecton database = new DB_Connecton(db, DB_ADMIN_ID, DB_ADMIN_PASS);
             
-            database.LoginDB(DB_table, DB_ADMIN_ID, DB_ADMIN_PASS);
+            
 
             //몬스터리스트 추가 및 데이터베이스에서 몬스터정보 로드 
-            database.getMonsterDB("GAMEMON", DB_ADMIN_ID, DB_ADMIN_PASS);
+            database.getMonsterDB();
 
             //필드 몬스터 생성 및 처리 (접속 클라이언트가 없을경우 전송하지는 않는다. )
             MonsterService();
@@ -253,7 +255,7 @@ namespace SharpGameServer
                         switch (msgArr[0]) {
                             case "NEWPLAYER":
                                 Console.WriteLine("플레이어 가입시도");
-                                string msg =database.AddplayerDB("playerTable",DB_ADMIN_ID,DB_ADMIN_PASS,msgArr[1]);
+                                string msg =database.AddplayerDB(msgArr[1]);
                                 //응답 메시지 전송
                                 SendMessage(clientData.socket, msg);
                                 
@@ -261,14 +263,14 @@ namespace SharpGameServer
 
                             case "LOGIN":
                                 Console.WriteLine("플레이어 로그인 시도");
-                                string msg2 = database.login_playerDB("playerTable", DB_ADMIN_ID, DB_ADMIN_PASS, msgArr[1]);
+                                string msg2 = database.login_playerDB(msgArr[1]);
                                 //응답 메시지 전송
                                 SendMessage(clientData.socket, msg2);
                                 break;
 
                             case "LOGOUT":
                                 Console.WriteLine("플레이어 로그아웃 요청");
-                                string msg3 = database.logout_playerDB("playerTable", DB_ADMIN_ID, DB_ADMIN_PASS, msgArr[1]);
+                                string msg3 = database.logout_playerDB(msgArr[1]);
                                 break;
 
                             case "TALK":
@@ -349,14 +351,10 @@ namespace SharpGameServer
                         Monster_Data monster = monsterList.ToArray<Monster_Data>()[i];
 
                         //monster 위치를 갱신 
-                        MonNavi.Start(monster);
+                        MonNavi.start(monster);
 
-                        Thread.Sleep(1);
-                        //0 = name , 1 = x , 2 =y , 3 = anime , 4 =HP -> #으로 구분
-                        mon_msg = mon_msg + "#" + monster.ID_name + "#" + monster.stat.x + "#" + monster.stat.y + "#" + monster.stat.anime + "#" + monster.HP;
 
-                        //현재 몬스터 필드테이블을 접속한 모든 플레이어에게 전송
-                        TcpMultiCast(mon_msg);
+                        
                     }
 
 
@@ -399,7 +397,7 @@ namespace SharpGameServer
 
         //AsyncTask 이용한 메세지 전송
         //비동기 전송처리 -> 멀티케스팅 
-        static void TcpMultiCast(string message)
+        public static void TcpMultiCast(string message)
         {
 
 
