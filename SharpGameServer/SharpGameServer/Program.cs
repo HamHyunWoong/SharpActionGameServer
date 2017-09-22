@@ -29,15 +29,15 @@ namespace SharpGameServer
         public static List<Monster_Data> monsterList = new List<Monster_Data>();
 
         static string readMassage;
-
+/// <summary>
+/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// </summary>
         public struct Status {
             public float x; //0
             public float y; //1
             public string anime; //2
 
         }
-
-
         public struct Client_Data { 
 
             public Socket socket;
@@ -57,7 +57,9 @@ namespace SharpGameServer
 
         }
 
-
+/// <summary>
+/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// </summary>
 
         static void Main(string[] args)
         {
@@ -351,9 +353,7 @@ namespace SharpGameServer
                         Monster_Data monster = monsterList.ToArray<Monster_Data>()[i];
 
                         //monster 위치를 갱신 
-                        MonNavi.start(monster);
-
-
+                        MonNavi.start(monster,i);
                         
                     }
 
@@ -399,8 +399,6 @@ namespace SharpGameServer
         //비동기 전송처리 -> 멀티케스팅 
         public static void TcpMultiCast(string message)
         {
-
-
             foreach (Client_Data sk in clientList)
             {
                 if (sk.socket != null)
@@ -410,7 +408,6 @@ namespace SharpGameServer
                     {
                         NetworkStream networkStream = new NetworkStream(sk.socket);
                         StreamWriter streamWriter = new StreamWriter(networkStream);
-
                         Console.WriteLine(message);
 
                         //비동기 I/O 전송처리(AsyncTask) 
@@ -424,9 +421,7 @@ namespace SharpGameServer
                     }
                     catch (Exception e)
                     {
-
                         Console.WriteLine("error : "+e.Message);
-
                     }
 
 

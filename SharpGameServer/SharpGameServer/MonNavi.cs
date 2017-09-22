@@ -42,7 +42,7 @@ namespace SharpGameServer
 
                 }
                 string mon_msg = "MONSTER$";
-                mon_msg += mon_msg + "#" + mon.ID_name + "#" + mon.stat.x + "#" + mon.stat.y + "#" + mon.stat.anime + "#" + mon.HP;
+                mon_msg = mon_msg + "#" + mon.ID_name + "#" + mon.stat.x + "#" + mon.stat.y + "#" + mon.stat.anime + "#" + mon.HP + "#" + mon.angle;
                 //현재 몬스터 필드테이블을 접속한 모든 플레이어에게 전송
                 Program.TcpMultiCast(mon_msg);
                 Program.monsterList.RemoveAt(index);
@@ -63,22 +63,22 @@ namespace SharpGameServer
 
             if (mx < px) {
 
-                mon.stat.x += 0.3f;
+                mon.stat.x += 0.1f;
             }
             if (mx > px)
             {
 
-                mon.stat.x -= 0.3f;
+                mon.stat.x -= 0.1f;
             }
             if (my < py)
             {
 
-                mon.stat.y += 0.3f;
+                mon.stat.y += 0.1f;
             }
             if (mx > px)
             {
 
-                mon.stat.y -= 0.3f;
+                mon.stat.y -= 0.1f;
             }
 
         }
