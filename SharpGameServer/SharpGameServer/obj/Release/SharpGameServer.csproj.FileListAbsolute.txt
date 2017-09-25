@@ -1,0 +1,7 @@
+C:\GitHubProject\SharpMMO_GameServer\SharpGameServer\SharpGameServer\bin\Release\SharpGameServer.exe.config
+C:\GitHubProject\SharpMMO_GameServer\SharpGameServer\SharpGameServer\bin\Release\SharpGameServer.exe
+C:\GitHubProject\SharpMMO_GameServer\SharpGameServer\SharpGameServer\bin\Release\SharpGameServer.pdb
+C:\GitHubProject\SharpMMO_GameServer\SharpGameServer\SharpGameServer\bin\Release\MySql.Data.dll
+C:\GitHubProject\SharpMMO_GameServer\SharpGameServer\SharpGameServer\obj\Release\SharpGameServer.csprojResolveAssemblyReference.cache
+C:\GitHubProject\SharpMMO_GameServer\SharpGameServer\SharpGameServer\obj\Release\SharpGameServer.exe
+C:\GitHubProject\SharpMMO_GameServer\SharpGameServer\SharpGameServer\obj\Release\SharpGameServer.pdb

@@ -17,12 +17,10 @@ namespace SharpGameServer
 
         public static Socket server;
         private static int port;
-        private static string DB_table;
-        private static string DB_URL;
         private static string DB_ADMIN_ID;
         private static string DB_ADMIN_PASS;
 
-
+        public static int loginCount;
 
         private static IPEndPoint ipEndPoint;
         public static List<Client_Data> clientList = new List<Client_Data>();
@@ -32,6 +30,7 @@ namespace SharpGameServer
 /// <summary>
 /// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// </summary>
+///     //클라이언트와 몬스터의 공통스테이터스
         public struct Status {
             public float x; //0
             public float y; //1
@@ -39,6 +38,7 @@ namespace SharpGameServer
             public float angle;
 
         }
+        //클라이언트 정보
         public struct Client_Data { 
 
             public Socket socket;
@@ -47,6 +47,7 @@ namespace SharpGameServer
             public Status stat;
   
         }
+        //몬스터 정보 
         public struct Monster_Data
         {
             
@@ -78,7 +79,7 @@ namespace SharpGameServer
 
         private void StartServer()
         {
-
+            loginCount = 0;
             Console.WriteLine("Server IP Address : " + Get_MyIP());
             Console.WriteLine("************************************************************");
             Console.Write("Port Number : ");
@@ -116,16 +117,19 @@ namespace SharpGameServer
 
             //필드 몬스터 생성 및 처리 (접속 클라이언트가 없을경우 전송하지는 않는다. )
             MonsterService();
-           
+
 
 
             //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-            
-            //이번 프로젝트에서는 접속자 한명당 스레드 하나를 할당하여 실시간 처리를 가능하도록 하였습니다.            
-            //또한 로그인서버 채팅서버를 게임서버에 합쳐서 한번에 구현해보기로 하였습니다.
-            //그렇기에 이번 프로젝트에는 로그인기능 채팅기능 게임정보 처리기능 등이 모두 구현되어 있습니다.
-            //몬스터는 서버에서 제어하는 구조로, 몬스터의 위치정보를 서버에서 생성하고 관리합니다. 
-             
+            //실시간 액션게임의 서버를 구현하고자 하였습니다.
+            //그렇기에 0.1초 단위로 모든 플레이어와 몬스터의 좌표를 공유하고 교환합니다. 
+            //이번 프로젝트에서는 접속자 한명당 스레드 하나를 할당하여 실시간 처리가 가능합니다. 
+            //I/O 처리는 비동기테스크를 지원하는 함수를 사용하여 반응성이 좋은 서버를 만들어보고자 하였습니다.           
+            //또한 로그인서버 채팅서버를 게임서버에 합쳐서 한번에 구현되어 있습니다.
+
+
+            //몬스터는 서버에서 제어하는 구조로, 몬스터의 위치정보를 서버에서 생성하고 관리합니다. ->MonNavi.cs 
+
             server.Listen(8); //동시 접속자수 제한, 서버오픈
             
 
@@ -175,17 +179,38 @@ namespace SharpGameServer
                         for (int i = 0; i < clientList.Count; i++)
                         {
                             Client_Data sk = clientList.ToArray<Client_Data>()[i];
-                           
+
                             if (sk.socket == client)
                             {
                                 Console.WriteLine("접속해제 클라이언트 정보 : " + address);
+
+                                for (int j = 0; j < monsterList.Count; j++)
+                                {
+
+                                    Monster_Data monster = monsterList.ToArray<Monster_Data>()[j];
+
+                                    if (monster.target_name == sk.ID_name)
+                                    {
+                                        monster.target_name = "";
+                                        monster.stat.anime = "IDLE";
+
+                                    }
+
+
+                                }
+
+
 
                                 //클라이언트 리스트에서 제거 
                                 clientList.RemoveAt(i);
                                 client.Close();
 
-                                //전체멀티케스트 
-                                TcpMultiCast("<<[" + address + "] 님이 채팅방에서 나가셨습니다.>>");
+
+                              
+
+
+                                    //전체멀티케스트 
+                                    TcpMultiCast("<<[" + address + "] 님이 채팅방에서 나가셨습니다.>>");
                             }
                         }
                     }
@@ -248,7 +273,7 @@ namespace SharpGameServer
                         // msgArr[0] = "LOGIN" 이면 로그인 및 플레이어 데이터 송신
                         // msgArr[0] = "LOGOUT" 이면 로그아웃 및 플레이어 데이터 수신 
                         // msgArr[0] = "TALK" 이면 채팅모드
-                        // msgArr[0] = "MONSTER" 이면 보스정보
+                        // msgArr[0] = "MONSTER" 이면 몬스터정보
                         // msgArr[0] = "PLAYER" 이면 플레이어
 
                         switch (msgArr[0]) {
@@ -270,6 +295,7 @@ namespace SharpGameServer
                             case "LOGOUT":
                                 Console.WriteLine("플레이어 로그아웃 요청");
                                 string msg3 = database.logout_playerDB(msgArr[1]);
+                                TcpMultiCast(msg3);
                                 break;
 
                             case "TALK":
@@ -279,14 +305,15 @@ namespace SharpGameServer
 
 
                             case "MONSTER":
+                                string[] monArr = msgArr[1].Split(new char[] { '#' });
                                 Console.WriteLine("몬스터 스테이터스 수신"); //이름,HP만 
                                 for(int i =0; i< monsterList.Count;i++)
                                 {
                                     Monster_Data mon = monsterList.ToArray<Monster_Data>()[i];
 
                                     //이름이 같을경우
-                                    if (mon.ID_name == msgArr[1]) {
-                                        mon.HP = int.Parse(msgArr[2]);
+                                    if (mon.ID_name == monArr[0]) {
+                                        mon.HP = int.Parse(monArr[1]);
                                         //해당 데이터를 삭제
                                         monsterList.RemoveAt(i);
                                         //새 데이터로 추가
@@ -326,26 +353,14 @@ namespace SharpGameServer
                                         clientList.Insert(i, cData);
 
                                     }
-
-
-
                                 }
-
-
 
                                 //전 클라이언트에 해당 플레이어의 위치를 알림 
                                 TcpMultiCast(readMassage);
-
-
                                 break;
-
 
                         }
 
-
-
-                        //BroadCast Server to Client
-                        //TcpMultiCast(readMassage);
                     }
 
 
@@ -353,9 +368,7 @@ namespace SharpGameServer
 
             }
 
-            //End Service Thread
-            Console.WriteLine("서비스스레드 종료됨");
-
+         
         }
 
         void MonsterService() {
@@ -371,14 +384,23 @@ namespace SharpGameServer
 
                         Monster_Data monster = monsterList.ToArray<Monster_Data>()[i];
 
-                        //monster 위치를 갱신 
-                        MonNavi.start(monster,i);
+                        //플레이어가 2명 이상 모일경우 게임시작
+                        if (loginCount>=2) {
+                            //monster 위치를 갱신 
+                            MonNavi.start(monster, i);
+
+
+                            if (monster.HP <= 0) {
+                                monsterList.RemoveAt(i);
+
+                            }
+                        }
                         
                     }
 
 
-                    //0.1초마다 슬립 시킴 
-                    Thread.Sleep(100);
+                    //0.2초마다 슬립 시킴 
+                    Thread.Sleep(200);
                 }
             });
             //Start Thread
@@ -386,7 +408,7 @@ namespace SharpGameServer
 
         }
 
-
+        //한 클라이언트에게 송신하기
         static void SendMessage(Socket sk,string message) {
             try
             {

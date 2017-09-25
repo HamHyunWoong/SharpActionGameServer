@@ -133,6 +133,9 @@ namespace SharpGameServer
                     login_reply = "LOGIN$로그인성공#" + dataset[0] + "#" + dataset[1] + "#" + dataset[2] + "#" + dataset[3];
                     Console.WriteLine("로그인 성공 : " + login_reply);
                     Console.WriteLine("클라이언트 리스트 : " + Program.clientList.Count);
+
+                    Program.TcpMultiCast("TALK$<"+dataset[0]+" 님이 로그인 하셨습니다.  >");
+
                     for (int i = 0; i < Program.clientList.Count; i++)
                     {
                         Program.Client_Data cData = Program.clientList.ToArray<Program.Client_Data>()[i];
@@ -150,6 +153,7 @@ namespace SharpGameServer
                             //새 데이터로 추가
                             Program.clientList.Insert(i, cData);
                             Console.WriteLine("로그인 데이터 리스트에 추가됨 id =" + Program.clientList.ToArray<Program.Client_Data>()[i].ID_name);
+                            Program.loginCount++;
                         }
                         else {
 
@@ -189,7 +193,9 @@ namespace SharpGameServer
                 string[] msgArr = playerInfo.Split(new char[] { '#' });
 
                 //해당 플레이어 ID로부터 튜플을 찾음
-                string statmsg = "LOGOUT$로그아웃성공";
+                string statmsg = "LOGOUT$로그아웃성공#"+msgArr[0];
+
+                Program.TcpMultiCast("TALK$<" + msgArr[0] + " 님이 로그아웃 하셨습니다.  >");
 
 
                 //데이터베이스에 플레이어 마지막 위치 정보 저장
@@ -202,7 +208,7 @@ namespace SharpGameServer
                 MySqlCommand cmd2 = new MySqlCommand("UPDATE playerstat SET Player_Y =" + msgArr[2] + " WHERE player_ID='" + msgArr[0] + "'", myConnection);
                 cmd2.ExecuteNonQuery();
                 myConnection.Close();
-
+                Program.loginCount--;
                 return statmsg;
 
   
@@ -213,7 +219,7 @@ namespace SharpGameServer
             }
             
         }
-        //몬스터 정보 불러오기
+        //데이터베이스에서 몬스터 정보 불러오기
         public void getMonsterDB()
         {
             try
@@ -233,7 +239,7 @@ namespace SharpGameServer
                     Console.WriteLine(sql);
                     MySqlCommand cmd = new MySqlCommand(sql, myConnection);
                     MySqlDataReader rdr = cmd.ExecuteReader();
-                    
+                    //데이터 받아오기 
                     while (rdr.Read())
                     {
 
@@ -243,9 +249,7 @@ namespace SharpGameServer
                         mon.stat.y = (float)rdr[3];
                         mon.stat.anime = (string)rdr[4];
                         mon.angle = (float)rdr[5];
-                        mon.target_name = "";
-               
-
+                        mon.target_name = "";               
                     }
                     
                     rdr.Close();
