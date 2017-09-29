@@ -35,8 +35,6 @@ namespace SharpGameServer
             public float x; //0
             public float y; //1
             public string anime; //2
-            public float angle;
-
         }
         //클라이언트 정보
         public struct Client_Data { 
