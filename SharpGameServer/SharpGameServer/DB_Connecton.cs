@@ -17,6 +17,7 @@ namespace SharpGameServer
         MySqlConnection myConnection;
 
         //생성자
+        //コンストラクタ
         public DB_Connecton(string DB_name, string admin_ID, string password)
         {
             try
@@ -25,6 +26,7 @@ namespace SharpGameServer
 
                 using (myConnection = new MySqlConnection("Server=localhost;Database=" + DB_name + ";Uid=" + admin_ID + ";Pwd=" + password + ";")) {
                     //데이터베이스 연결설정 ->GameDB
+                    //データベース連結テスト
                     myConnection.Open();
                     Console.WriteLine("데이터베이스 오픈성공");
                     myConnection.Close();
@@ -38,6 +40,7 @@ namespace SharpGameServer
 
         }
         //새로 가입하기
+        //新プレイヤー登録処理
         public string AddplayerDB(string playerInfo)
         {
                 string reply = "NEWPLAYER$가입실패";
@@ -50,6 +53,7 @@ namespace SharpGameServer
                 {
                 myConnection.Open();
                 // 가입하려는 아이디 값으로 검색 
+                //アカウント検索
                 MySqlCommand cmd = new MySqlCommand("SELECT player_ID FROM playerstat WHERE player_ID='" + msgArr[0] + "'", myConnection);
                     MySqlDataReader rdr = cmd.ExecuteReader();
 
@@ -61,16 +65,18 @@ namespace SharpGameServer
                     Console.WriteLine("val : "+str);
 
                 myConnection.Close();
-
+                //등록성공처리
+                //登録成功処理
                 if (str == "A")
                 {
-                    Console.WriteLine("called");
-                    //넣기
+
+                    //데이터베이스에등록
+                    //データベースに情報登録
                     myConnection.Open();
                     MySqlCommand cmd2 = new MySqlCommand("INSERT INTO playerstat (player_ID , player_PASS, Player_X , Player_Y , Player_ANI , email) VALUES ('" + msgArr[0] + "', '" + msgArr[1] + "' , -30 ,0 ,'IDLE' ,'"+msgArr[2]+"' )", myConnection);
                     cmd2.ExecuteNonQuery();
 
-
+                    
                     reply = "NEWPLAYER$가입성공";
                     myConnection.Close();
                     return reply;
@@ -79,7 +85,8 @@ namespace SharpGameServer
                 else {
 
                     Console.WriteLine("가입실패처리 ");
-                    //발견되었을 경우 가입실패라 알림 
+                    //등록실패처리
+                    //登録失敗処理
                     reply = "NEWPLAYER$가입실패";
                 }
 
@@ -97,6 +104,7 @@ namespace SharpGameServer
             return reply;
         }
         //로그인하기
+        //ログインする
         public string login_playerDB(string playerInfo,Socket socket)
         {
             string login_reply = "LOGIN$로그인실패";
@@ -107,6 +115,7 @@ namespace SharpGameServer
                     Console.WriteLine("message : " + playerInfo);
                     myConnection.Open();
                     // 로그인하려는 아이디 값으로 검색 
+                    //ログインアカウントで検索
                     MySqlCommand cmd = new MySqlCommand("SELECT * FROM playerstat WHERE player_ID='" + msgArr[0] + "'", myConnection);
                     MySqlDataReader rdr = cmd.ExecuteReader();
 
@@ -125,12 +134,14 @@ namespace SharpGameServer
                     rdr.Close();
                     myConnection.Close();
                     Console.WriteLine("사용자 PASS : " + dataset[1]);
-                //패스워드 비교
+                //패스워드 처리
+                //パスワード処理
                 if (msgArr[1] == dataset[1])
                 {
-
+                    //client split: 0 = Login , 1 = ID , 2 =Password , 3 = X, 4=Y
                     //client split: 0 = 로그인성공 , 1 = 아이디 , 2  = 패스워드 ,3 = X,  4 =Y
                     login_reply = "LOGIN$로그인성공#" + dataset[0] + "#" + dataset[1] + "#" + dataset[2] + "#" + dataset[3];
+                    //Login Succ
                     Console.WriteLine("로그인 성공 : " + login_reply);
                     Console.WriteLine("클라이언트 리스트 : " + Program.clientList.Count);
 
@@ -140,6 +151,7 @@ namespace SharpGameServer
                     {
                         Program.Client_Data cData = Program.clientList.ToArray<Program.Client_Data>()[i];
                         //소켓이 같을경우
+                        //Socketが同じ場合
                         if (cData.socket == socket)
                         {
                             Console.WriteLine("갱신 호출됨");
@@ -149,8 +161,10 @@ namespace SharpGameServer
 
 
                             //해당 데이터를 삭제
+                            //該当データを削除
                             Program.clientList.RemoveAt(i);
                             //새 데이터로 추가
+                            //新しいデータを追加
                             Program.clientList.Insert(i, cData);
                             Console.WriteLine("로그인 데이터 리스트에 추가됨 id =" + Program.clientList.ToArray<Program.Client_Data>()[i].ID_name);
                             Program.loginCount++;
@@ -184,6 +198,7 @@ namespace SharpGameServer
 
         }
         //로그아웃하기 
+        //ログアウト
         public string logout_playerDB(string playerInfo)
         {
             string reply = "LOGINOUT$로그아웃실패";
@@ -193,12 +208,14 @@ namespace SharpGameServer
                 string[] msgArr = playerInfo.Split(new char[] { '#' });
 
                 //해당 플레이어 ID로부터 튜플을 찾음
+                //該当プレイヤーのIDから情報をロード
                 string statmsg = "LOGOUT$로그아웃성공#"+msgArr[0];
 
                 Program.TcpMultiCast("TALK$<" + msgArr[0] + " 님이 로그아웃 하셨습니다.  >");
 
 
                 //데이터베이스에 플레이어 마지막 위치 정보 저장
+                //プレイヤーの最後の座標をセーブ
                 myConnection.Open();
                 MySqlCommand cmd = new MySqlCommand("UPDATE playerstat SET Player_X ="+msgArr[1]+" WHERE player_ID= '"+msgArr[0]+"'", myConnection);
                 cmd.ExecuteNonQuery();
@@ -220,17 +237,18 @@ namespace SharpGameServer
             
         }
         //데이터베이스에서 몬스터 정보 불러오기
+        //データベースからモンスター情報をロード
         public void getMonsterDB()
         {
             try
             {
 
-                //일단 몇개 샘플을 넣었습니다. 
+                //Sample Monster
                 string[] mon_names = {"Mon1","Mon2" };
 
 
                 for (int i =0; i<mon_names.Length;i++) {
-                    // DB 열기
+                   
                     myConnection.Open();
                     Program.Monster_Data mon = new Program.Monster_Data();
 
@@ -239,7 +257,7 @@ namespace SharpGameServer
                     Console.WriteLine(sql);
                     MySqlCommand cmd = new MySqlCommand(sql, myConnection);
                     MySqlDataReader rdr = cmd.ExecuteReader();
-                    //데이터 받아오기 
+                    //データをロード
                     while (rdr.Read())
                     {
 
@@ -257,6 +275,7 @@ namespace SharpGameServer
                     Console.WriteLine(mon.ID_name + " , " + mon.HP + " , " + mon.stat.x + " , " + mon.stat.y + " , " + mon.stat.anime + " , " + mon.angle);
 
                     //리스트에 추가
+                    //リストに追加
                     Program.monsterList.Add(mon);
 
                     }
