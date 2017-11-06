@@ -23,6 +23,7 @@ namespace SharpGameServer
         public static int loginCount;
 
         private static IPEndPoint ipEndPoint;
+
         public static List<Client_Data> clientList = new List<Client_Data>();
         public static List<Monster_Data> monsterList = new List<Monster_Data>();
 
@@ -176,38 +177,43 @@ namespace SharpGameServer
                     }
                     catch (Exception e)
                     {
-                        for (int i = 0; i < clientList.Count; i++)
+                        lock (clientList)
                         {
-                            Client_Data sk = clientList.ToArray<Client_Data>()[i];
-
-                            if (sk.socket == client)
+                            for (int i = 0; i < clientList.Count; i++)
                             {
-                                Console.WriteLine("접속해제 클라이언트 정보 : " + address);
+                            
+                                Client_Data sk = clientList.ToArray<Client_Data>()[i];
 
-                                for (int j = 0; j < monsterList.Count; j++)
+                                if (sk.socket == client)
                                 {
-
-                                    Monster_Data monster = monsterList.ToArray<Monster_Data>()[j];
-
-                                    if (monster.target_name == sk.ID_name)
+                                    Console.WriteLine("접속해제 클라이언트 정보 : " + address);
+                                    lock (monsterList)
                                     {
-                                        monster.target_name = "";
-                                        monster.stat.anime = "IDLE";
+                                        for (int j = 0; j < monsterList.Count; j++)
+                                        {
+                                        
+
+                                            Monster_Data monster = monsterList.ToArray<Monster_Data>()[j];
+
+                                            if (monster.target_name == sk.ID_name)
+                                            {
+                                                monster.target_name = "";
+                                                monster.stat.anime = "IDLE";
+
+                                            }
+                                        }
 
                                     }
 
 
+
+                                    //클라이언트 리스트에서 제거 
+                                    clientList.RemoveAt(i);
+                                    client.Close();
+
+
+
                                 }
-
-
-
-                                //클라이언트 리스트에서 제거 
-                                clientList.RemoveAt(i);
-                                client.Close();
-
-
-                              
-
 
                                     //전체멀티케스트 
                                     TcpMultiCast("<<[" + address + "] 님이 채팅방에서 나가셨습니다.>>");
@@ -240,24 +246,27 @@ namespace SharpGameServer
             while (true)
             {
                 Thread.Sleep(100);
+
                 if (!clientData.socket.Connected)
                 {
                     int i = 0;
-                    foreach (Client_Data sk in clientList)
+                    lock (clientList)
                     {
-
-                        if (sk.socket == clientData.socket)
+                        foreach (Client_Data sk in clientList)
                         {
 
-                            clientList.RemoveAt(i);
-                            clientData.socket.Close();
+                            if (sk.socket == clientData.socket)
+                            {
 
-                            break;
+                                clientList.RemoveAt(i);
+                                clientData.socket.Close();
 
+                                break;
+
+                            }
+                            i++;
                         }
-                        i++;
                     }
-
                 }
                 else
                 {
@@ -307,22 +316,24 @@ namespace SharpGameServer
                             case "MONSTER":
                                 string[] monArr = msgArr[1].Split(new char[] { '#' });
                                 Console.WriteLine("몬스터 스테이터스 수신"); //이름,HP만 
-                                for(int i =0; i< monsterList.Count;i++)
-                                {
-                                    Monster_Data mon = monsterList.ToArray<Monster_Data>()[i];
+                                lock (monsterList) {
+                                    for (int i = 0; i < monsterList.Count; i++)
+                                    {
+                                        Monster_Data mon = monsterList.ToArray<Monster_Data>()[i];
 
-                                    //이름이 같을경우
-                                    if (mon.ID_name == monArr[0]) {
-                                        mon.HP = int.Parse(monArr[1]);
-                                        //해당 데이터를 삭제
-                                        monsterList.RemoveAt(i);
-                                        //새 데이터로 추가
-                                        monsterList.Insert(i,mon);
+                                        //이름이 같을경우
+                                        if (mon.ID_name == monArr[0])
+                                        {
+                                            mon.HP = int.Parse(monArr[1]);
+                                            //해당 데이터를 삭제
+                                            monsterList.RemoveAt(i);
+                                            //새 데이터로 추가
+                                            monsterList.Insert(i, mon);
+
+                                        }
+
 
                                     }
-                                    
-
-
                                 }
                                 break;
 
@@ -332,29 +343,31 @@ namespace SharpGameServer
                                 string[] statArr = msgArr[1].Split(new char[] { '#' });
 
                                 //좌표를 일시적으로 저장한 이유는 몬스터의 네비게이션 알고리즘에 활용하기 위해 -> 리얼타임 처리 
-                                
 
-                                for (int i = 0; i < clientList.Count; i++)
+                                lock (clientList)
                                 {
-                                    Client_Data cData = clientList.ToArray<Client_Data>()[i];
 
-                                    //이름이 같을경우
-                                    if (cData.ID_name == statArr[0])
+                                    for (int i = 0; i < clientList.Count; i++)
                                     {
-                                        cData.ID_name = statArr[0];
-                                        cData.stat.x = float.Parse(statArr[1]);
-                                        cData.stat.y = float.Parse(statArr[2]);
-                                        cData.stat.anime = statArr[3];
-                                        cData.stat.angle = float.Parse(statArr[4]);
+                                        Client_Data cData = clientList.ToArray<Client_Data>()[i];
 
-                                        //해당 데이터를 삭제
-                                        clientList.RemoveAt(i);
-                                        //새 데이터로 추가
-                                        clientList.Insert(i, cData);
+                                        //이름이 같을경우
+                                        if (cData.ID_name == statArr[0])
+                                        {
+                                            cData.ID_name = statArr[0];
+                                            cData.stat.x = float.Parse(statArr[1]);
+                                            cData.stat.y = float.Parse(statArr[2]);
+                                            cData.stat.anime = statArr[3];
+                                            cData.stat.angle = float.Parse(statArr[4]);
 
+                                            //해당 데이터를 삭제
+                                            clientList.RemoveAt(i);
+                                            //새 데이터로 추가
+                                            clientList.Insert(i, cData);
+
+                                        }
                                     }
                                 }
-
                                 //전 클라이언트에 해당 플레이어의 위치를 알림 
                                 TcpMultiCast(readMassage);
                                 break;
@@ -381,21 +394,25 @@ namespace SharpGameServer
                     string mon_msg = "MONSTER$";
                     for (int i = 0; i < monsterList.Count; i++)
                     {
+                        lock (monsterList)
+                        {
+                            Monster_Data monster = monsterList.ToArray<Monster_Data>()[i];
 
-                        Monster_Data monster = monsterList.ToArray<Monster_Data>()[i];
+                            //플레이어가 2명 이상 모일경우 게임시작
+                            if (loginCount >= 2)
+                            {
+                                //monster 위치를 갱신 
+                                MonNavi.start(monster, i);
 
-                        //플레이어가 2명 이상 모일경우 게임시작
-                        if (loginCount>=2) {
-                            //monster 위치를 갱신 
-                            MonNavi.start(monster, i);
 
+                                if (monster.HP <= 0)
+                                {
+                                    monsterList.RemoveAt(i);
 
-                            if (monster.HP <= 0) {
-                                monsterList.RemoveAt(i);
-
+                                }
                             }
+
                         }
-                        
                     }
 
 
@@ -438,34 +455,37 @@ namespace SharpGameServer
         //비동기 전송처리 -> 멀티케스팅 
         public static void TcpMultiCast(string message)
         {
-            for (int i = 0; i < clientList.Count; i++)
+            lock (clientList)
             {
-                Client_Data sk = clientList.ToArray<Client_Data>()[i];
-
-                if (sk.socket != null)
+                for (int i = 0; i < clientList.Count; i++)
                 {
-                    //Send
-                    try
+                    Client_Data sk = clientList.ToArray<Client_Data>()[i];
+
+                    if (sk.socket != null)
                     {
-                        NetworkStream networkStream = new NetworkStream(sk.socket);
-                        StreamWriter streamWriter = new StreamWriter(networkStream);
-                        //Console.WriteLine(message);
+                        //Send
+                        try
+                        {
+                            NetworkStream networkStream = new NetworkStream(sk.socket);
+                            StreamWriter streamWriter = new StreamWriter(networkStream);
+                            //Console.WriteLine(message);
 
-                        //비동기 I/O 전송처리(AsyncTask) 
-                        streamWriter.WriteLineAsync(message);
-                        //버퍼를 비동기적으로 지움(AsyncTask)
-                        streamWriter.FlushAsync();
+                            //비동기 I/O 전송처리(AsyncTask) 
+                            streamWriter.WriteLineAsync(message);
+                            //버퍼를 비동기적으로 지움(AsyncTask)
+                            streamWriter.FlushAsync();
 
 
-                        networkStream = null;
-                        streamWriter = null;
+                            networkStream = null;
+                            streamWriter = null;
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine("error : " + e.Message);
+                        }
+
+
                     }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine("error : "+e.Message);
-                    }
-
-
                 }
             }
         }
