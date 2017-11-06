@@ -10,13 +10,13 @@ using System.Net.NetworkInformation;
 using System.Threading;
 using MySql.Data.MySqlClient;
 
-//실시간 액션게임의 서버를 구현하고자 하였습니다.
+//실시간 액션게임의 서버를 구현하고자 하였습니다. (일괄처리서버)
 //그렇기에 0.1초 단위로 모든 플레이어와 몬스터의 좌표를 공유하고 교환합니다. 
 //이번 프로젝트에서는 접속자 한명당 스레드 하나를 할당하여 실시간 처리가 가능합니다. 
 //I/O 처리는 비동기테스크를 지원하는 함수를 사용하여 반응성이 좋은 서버를 만들어보고자 하였습니다.           
 //또한 로그인서버 채팅서버를 게임서버에 합쳐서 한번에 구현되어 있습니다.
 //몬스터는 서버에서 제어하는 구조로, 몬스터의 위치정보를 서버에서 생성하고 관리합니다. ->MonNavi.cs 
-//リアルタイムアクションゲームのサーバーを実装しようとしました。
+//リアルタイムアクションゲームのサーバーを実装しようとしました。(一括処理サーバ)
 //そのため、0.1秒単位ですべてのプレイヤーとモンスターの座標を共有して交換します。
 //今回のプロジェクトでは、接続者一人につき1つのスレッドを割り当てて、リアルタイム処理が可能です。
 // I/ O処理は非同期タスクをサポートする関数を使用して反応性が良いサーバーを作ってみようとしました。
@@ -37,6 +37,7 @@ namespace SharpGameServer
 
         private static IPEndPoint ipEndPoint;
 
+        //Thread -> Lock 
         public static List<Client_Data> clientList = new List<Client_Data>();
         public static List<Monster_Data> monsterList = new List<Monster_Data>();
 
@@ -50,6 +51,7 @@ namespace SharpGameServer
             public float x; //0
             public float y; //1
             public string anime; //2
+            public float angle;
         }
         //클라이언트 정보
         //クライアント情報
@@ -223,15 +225,6 @@ namespace SharpGameServer
 
                                     }
 
-
-<<<<<<< HEAD
-=======
-                                //클라이언트 리스트에서 제거 
-                                //クライアントリストから取り除く
-                                clientList.RemoveAt(i);
-                                client.Close();
->>>>>>> origin/master
-
                                     //클라이언트 리스트에서 제거 
                                     clientList.RemoveAt(i);
                                     client.Close();
@@ -298,12 +291,12 @@ namespace SharpGameServer
                 else
                 {
 
-                    while ((readMassage = streamReader.ReadLine() ) != null)
+                    while ((readMassage = streamReader.ReadLine()) != null)
                     {
                         //Read Massage from Client
-                       // Console.WriteLine("수신된 메시지 : " + readMassage);
+                        // Console.WriteLine("수신된 메시지 : " + readMassage);
 
-                        string[] msgArr = readMassage.Split(new char[] {'$'}); //$로 구분 
+                        string[] msgArr = readMassage.Split(new char[] { '$' }); //$로 구분 
 
                         // msgArr[0] = "NEWPLAYER" 
                         // msgArr[0] = "LOGIN" 
@@ -314,18 +307,18 @@ namespace SharpGameServer
                         switch (msgArr[0]) {
                             case "NEWPLAYER":
                                 Console.WriteLine("플레이어 가입시도");
-                                string msg =database.AddplayerDB(msgArr[1]);
+                                string msg = database.AddplayerDB(msgArr[1]);
                                 //응답 메시지 전송
                                 //応答メッセージ送信
                                 SendMessage(clientData.socket, msg);
-                                
+
                                 break;
 
                             case "LOGIN":
                                 Console.WriteLine("플레이어 로그인 시도");
-                                string msg2 = database.login_playerDB(msgArr[1],clientData.socket);
+                                string msg2 = database.login_playerDB(msgArr[1], clientData.socket);
                                 //응답 메시지 전송
-                                 //応答メッセージ送信
+                                //応答メッセージ送信
                                 SendMessage(clientData.socket, msg2);
                                 break;
 
@@ -344,12 +337,13 @@ namespace SharpGameServer
                             case "MONSTER":
                                 string[] monArr = msgArr[1].Split(new char[] { '#' });
                                 Console.WriteLine("몬스터 스테이터스 수신"); //이름,HP만 
-                                lock (monsterList) {
+                                lock (monsterList)
+                                {
                                     for (int i = 0; i < monsterList.Count; i++)
                                     {
                                         Monster_Data mon = monsterList.ToArray<Monster_Data>()[i];
 
-<<<<<<< HEAD
+
                                         //이름이 같을경우
                                         if (mon.ID_name == monArr[0])
                                         {
@@ -358,42 +352,37 @@ namespace SharpGameServer
                                             monsterList.RemoveAt(i);
                                             //새 데이터로 추가
                                             monsterList.Insert(i, mon);
-=======
-                                    //이름이 같을경우
-                                    //名前が同じ場合
-                                    if (mon.ID_name == monArr[0]) {
-                                        mon.HP = int.Parse(monArr[1]);
-                                        //해당 데이터를 삭제
-                                        //該当データを削除
-                                        monsterList.RemoveAt(i);
-                                        //새 데이터로 추가
-                                        //新しいデータを追加
-                                        monsterList.Insert(i,mon);
->>>>>>> origin/master
+
+                                            //이름이 같을경우
+                                            //名前が同じ場合
+                                            if (mon.ID_name == monArr[0])
+                                            {
+                                                mon.HP = int.Parse(monArr[1]);
+                                                //해당 데이터를 삭제
+                                                //該当データを削除
+                                                monsterList.RemoveAt(i);
+                                                //새 데이터로 추가
+                                                //新しいデータを追加
+                                                monsterList.Insert(i, mon);
+
+
+                                            }
+
 
                                         }
-
-
                                     }
                                 }
                                 break;
 
                             case "PLAYER":
-                               
+
                                 // 0 = x , 1 = y , 2 =anime , 3 =name_id 
                                 string[] statArr = msgArr[1].Split(new char[] { '#' });
 
-<<<<<<< HEAD
+
                                 //좌표를 일시적으로 저장한 이유는 몬스터의 네비게이션 알고리즘에 활용하기 위해 -> 리얼타임 처리 
 
-                                lock (clientList)
-=======
-     
-                                for (int i = 0; i < clientList.Count; i++)
->>>>>>> origin/master
-                                {
-
-<<<<<<< HEAD
+                                lock (clientList) {
                                     for (int i = 0; i < clientList.Count; i++)
                                     {
                                         Client_Data cData = clientList.ToArray<Client_Data>()[i];
@@ -413,44 +402,24 @@ namespace SharpGameServer
                                             clientList.Insert(i, cData);
 
                                         }
-=======
-                                    //이름이 같을경우
-                                    //名前が一致する場合
-                                    if (cData.ID_name == statArr[0])
-                                    {
-                                        cData.ID_name = statArr[0];
-                                        cData.stat.x = float.Parse(statArr[1]);
-                                        cData.stat.y = float.Parse(statArr[2]);
-                                        cData.stat.anime = statArr[3];
-                                        cData.stat.angle = float.Parse(statArr[4]);
 
-                                        //해당 데이터를 삭제
-                                        //該当　データを削除
-                                        clientList.RemoveAt(i);
-                                        //새 데이터로 추가
-                                        //新しいデータを追加
-                                        clientList.Insert(i, cData);
-
->>>>>>> origin/master
                                     }
-                                }
-                                //전 클라이언트에 해당 플레이어의 위치를 알림 
-                                //全てのクライアントに該当プレイヤーの座標を知らせる。
-                                TcpMultiCast(readMassage);
-                                break;
+                                        //전 클라이언트에 해당 플레이어의 위치를 알림 
+                                        //全てのクライアントに該当プレイヤーの座標を知らせる。
+                                        TcpMultiCast(readMassage);
+                                        break;
 
-                        }
+                                   
+
+                                }
+
+}
 
                     }
 
 
                 }
-
-            }
-
-         
-        }
-
+            } }
         void MonsterService() {
 
             Thread serviceThread = new Thread(delegate ()
@@ -465,23 +434,12 @@ namespace SharpGameServer
                         {
                             Monster_Data monster = monsterList.ToArray<Monster_Data>()[i];
 
-<<<<<<< HEAD
                             //플레이어가 2명 이상 모일경우 게임시작
-                            if (loginCount >= 2)
-                            {
+                            //プレイヤーが二人以上、集まった場合ゲーム開始
+                            if (loginCount>=2) {
                                 //monster 위치를 갱신 
+                                //monster　座標を更新
                                 MonNavi.start(monster, i);
-=======
-                        Monster_Data monster = monsterList.ToArray<Monster_Data>()[i];
-                        
-                        //플레이어가 2명 이상 모일경우 게임시작
-                        //プレイヤーが二人以上、集まった場合ゲーム開始
-                        if (loginCount>=2) {
-                            //monster 위치를 갱신 
-                            //monster　座標を更新
-                            MonNavi.start(monster, i);
->>>>>>> origin/master
-
 
                                 if (monster.HP <= 0)
                                 {
@@ -498,7 +456,7 @@ namespace SharpGameServer
                     //0.2秒ごとにスリップ
                     Thread.Sleep(200);
                 }
-            });
+           } );
             //Start Thread
             serviceThread.Start();
 
@@ -554,19 +512,10 @@ namespace SharpGameServer
                             StreamWriter streamWriter = new StreamWriter(networkStream);
                             //Console.WriteLine(message);
 
-<<<<<<< HEAD
                             //비동기 I/O 전송처리(AsyncTask) 
                             streamWriter.WriteLineAsync(message);
                             //버퍼를 비동기적으로 지움(AsyncTask)
                             streamWriter.FlushAsync();
-=======
-                        //비동기 I/O 전송처리(AsyncTask) 
-                         //非同期I/O送信処理
-                        streamWriter.WriteLineAsync(message);
-                        //버퍼를 비동기적으로 지움(AsyncTask)
-                        //bufferを非同期的に消す。
-                        streamWriter.FlushAsync();
->>>>>>> origin/master
 
 
                             networkStream = null;
